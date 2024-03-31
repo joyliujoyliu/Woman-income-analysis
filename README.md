@@ -1,1 +1,3 @@
 # Woman-income-analysis
+This is for Ottawa Data Challenge 2024.
+https://www.meetup.com/rladies-ottawa/events/299811025?fbclid=IwAR3p1fv3S2kwO00peV1TTs3f2mlkFZf0FQKkuGWjq8Q8YBDtK-5YlzvP5iU_aem_ASNw9j9iCkw9cHO3c6hZ0yUca4flaeqfb8AbF54PHNhjfcI3HXyI3Rbuev8tlOEphu-c9n7goHzxXnjQKZ7BV2Ax
