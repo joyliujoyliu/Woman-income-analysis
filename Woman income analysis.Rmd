@@ -1,0 +1,920 @@
+---
+title: "Woman Income Analysis in Canada"
+output:
+  html_document:
+    df_print: paged
+date: "2024-03-28"
+bibliography: citations.bib
+bookdown::pdf_book:
+    base_format: rticles::jss_article
+    
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T )
+
+```
+
+
+
+
+
+```{r, echo = F , results='hide',  message=FALSE, , warning=FALSE }
+library(xlsx)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(ggeffects)
+library(glmmTMB)
+require(splines)
+library(DHARMa)
+library(MASS)
+library(mgcv)
+require(maptools)
+library(ggmap)
+library(mapdata)
+library(maps)
+library(mapproj)
+library(gridExtra)
+library(grid)
+library(knitr)
+library(caret)
+library(scales)
+library(plotly)
+library(TMB)
+library(mapcan )
+library(cluster) 
+library(HistogramTools)
+library(ggpubr)
+library(raster)
+library(sdmTMB)
+library(ggpubr)
+library(plyr)
+library(sf)
+library(terra)
+library(rnaturalearth)
+library(tmap)
+library(tmaptools)
+library(corrplot )
+library (leaflet)
+library(gcookbook)  # Load gcookbook for the uspopage data set
+library(viridis) 
+library(knitr)
+library(kableExtra)
+library(formattable)
+library(plotly)
+```
+
+
+
+## Introduction
+
+
+
+Examining women's income is pivotal for achieving Gender Equity, driving Economic Development, promoting Family Well-being, and securing the prosperity of Future Generations. Delving into women's income yields invaluable insights into their economic engagement. Elevated income levels among women catalyze overall economic advancement by bolstering household finances, stimulating consumer expenditure, and bolstering tax revenues [@canada_economic_2021]. Additionally, women's income plays a pivotal role in bolstering family welfare [@_brodie__canadas_2007]. A comprehensive understanding of women's earning potential informs the formulation of policies and initiatives geared towards fortifying families' economic stability and holistic welfare [@statistics_canada_economic_2018]. Moreover, women's income levels bear far-reaching consequences across generations. Increased incomes for women can substantially enhance the educational opportunities, healthcare access, and future earning potential of their offspring, thereby disrupting the cycle of poverty and inequity. Hence, acknowledging and honoring women's contributions in the workforce is imperative for nurturing diversity and fostering inclusion [@noauthor_facts_2023]. Examining women's income facilitates the creation of environments where every individual, irrespective of gender, is afforded equal prospects for success.
+
+
+In this project, our primary objective is to scrutinize various income brackets categorized by age and gender in Canada, spanning different provinces. We will accomplish this by leveraging the dataset graciously provided by @statistics_canada_total_2021.
+
+All the coding will be shred in github: https://github.com/joyliujoyliu
+
+## Data Visualization
+After cleaning the data, the dataset is shown as Table 1.
+there are 18 income groups: Under \$5,000 (including loss), \$5,000 to \$9,999, \$10,000 to \$14,999, \$15,000 to \$19,999, \$20,000 to \$24,999, \$25,000 to \$29,999, \$30,000 to \$34,999, \$35,000 to \$39,999, \$40,000 to \$44,999, \$45,000 to \$49,999, \$50,000 to \$54,999, \$55,000 to \$59,999, \$60,000 to \$69,999, \$70,000 to \$79,999, \$80,000 to \$89,999, \$90,000 to \$99,999, \$100,000 to \$149,999, and  \$150,000 and over. Also there are 10 age groups, some of them are overlapped and the income distribution among different age groups is shown as Fig 1.           
+
+
+
+```{r, echo = F , results='hide',  message=FALSE, , warning=FALSE }
+mydata=read.csv("98100064.csv")
+
+mydata= mydata%>%filter(
+  Age..11. != "Total - Age",
+  Gender..3a.  != "Total - Gender",
+  GEO  !="Canada"
+  
+) %>% transmute(
+   province  = GEO,
+  agegroup= as.factor(Age..11. ),
+  gender= Gender..3a.  , 
+   incomegroups=  Total.income.groups..24. , 
+ count2020=Year..2..2020.1.,
+  count2025= Year..2..2015.2.)
+
+mydata=mydata%>%filter(!str_detect(incomegroups, "total"))
+mydata=mydata%>%filter(!str_detect(incomegroups, "Total"))
+
+
+
+mydata <- mydata[mydata$incomegroups != "$100,000 and over", ]
+
+
+mydata$incomeGroups=NA
+
+for(i in 1:length(mydata[,1]))
+{
+  
+  if(mydata$incomegroups[i]== "Under $5,000 (including loss)"   )
+    
+  {
+    mydata$incomeGroups[i]=1
+    
+  }
+  
+  
+  else if(mydata$incomegroups[i]== "$5,000 to $9,999" )
+    
+  {
+    mydata$incomeGroups[i]=2
+    
+  }
+  
+  else if (mydata$incomegroups[i] == "$10,000 to $14,999"  )
+    
+  {
+    mydata$incomeGroups[i]=3
+    
+  }
+  
+  
+  else if( mydata$incomegroups[i] == "15,000 to $19,999"   )
+    
+  {
+    mydata$incomeGroups[i]=4
+    
+  }
+  
+  else  if( mydata$incomegroups[i]==  "$20,000 to $24,999"    )
+    
+  {
+    mydata$incomeGroups[i]=5
+    
+  }
+  
+  
+  else if(  mydata$incomegroups[i] == "$25,000 to $29,999"    )
+    
+  {
+    mydata$incomeGroups[i]=6
+    
+  }
+  
+  else  if( mydata$incomegroups[i] == "$30,000 to $34,999"   )
+    
+  {
+    mydata$incomeGroups[i]=7
+    
+  }
+  
+  else  if( mydata$incomegroups[i] == "$35,000 to $39,999"    )
+    
+  {
+    mydata$incomeGroups[i]=8
+    
+  }
+  
+  
+  else if( mydata$incomegroups[i] == "$40,000 to $44,999"    )
+    
+  {
+    mydata$incomeGroups[i]=9
+    
+  }
+  else  if( mydata$incomegroups[i] =="$45,000 to $49,999"    )
+    
+  {
+    mydata$incomeGroups[i]=10
+    
+  }
+  else if( mydata$incomegroups[i]== "$50,000 to $54,999"    )
+    
+  {
+    mydata$incomeGroups[i]=11
+    
+  }
+  
+  else if( mydata$incomegroups[i] == "$55,000 to $59,999"    )
+    
+  {
+    mydata$incomeGroups[i]=12
+    
+  }
+  
+  else  if( mydata$incomegroups[i]== "$60,000 to $69,999"    )
+    
+  {
+    mydata$incomeGroups[i]=13
+    
+  }
+  
+  
+  else if( mydata$incomegroups[i]== "$70,000 to $79,999"    )
+    
+  {
+    mydata$incomeGroups[i]=14
+    
+  }
+  
+  else if( mydata$incomegroups[i] == "$80,000 to $89,999"    )
+    
+  {
+    mydata$incomeGroups[i]=15
+    
+    
+  }
+  else if( mydata$incomegroups[i]== "$90,000 to $99,999"    )
+    
+  {
+    mydata$incomeGroups[i]=16
+    
+  }
+  
+  else if( mydata$incomegroups[i]== "$100,000 to $149,999"    )
+    
+  {
+    mydata$incomeGroups[i]=17
+    
+  }
+  
+  else  
+    
+  {
+    mydata$incomeGroups[i]=18
+    
+  }
+  
+  
+}
+
+
+mydata=na.omit(  mydata)
+
+```
+
+
+```{r, fig.cap="Table 1: 10 ramdonly selected observations from the original dataset"}
+set.seed(10)
+ft_dt<- mydata[sample(1:nrow(mydata), 6, replace=FALSE),]
+ft_dt$count2020<- color_tile("white", "orange")(ft_dt$count2020)
+
+ft_dt$incomeGroups=as.numeric(ft_dt$incomeGroups)
+
+ft_dt$incomeGroups<- ifelse(
+  ft_dt$incomeGroups<10,
+  cell_spec(ft_dt$incomeGroups, color = "pink", bold = T),
+  cell_spec(ft_dt$incomeGroups, color = "blue", italic = T)
+)
+
+ft_dt$gender <- ifelse(
+  ft_dt$gender =="Men+",
+  cell_spec(ft_dt$gender, color = "red", bold = T),
+  cell_spec(ft_dt$gender, color = "green", italic = T)
+)
+
+ft_dt=ft_dt[,-6]
+
+kbl(ft_dt, escape = F) %>%
+  kable_paper("hover", full_width = F) %>%
+  column_spec(5, width = "3cm")
+```
+
+```{r,  fig.width=12,fig.height=6, fig.cap="Fig 1: Income Distribution in 2020 per age group"}
+
+ggplot(data=mydata, aes(x= incomeGroups , y=count2020 , fill=gender )) +
+  geom_bar(stat="identity", color="black", position=position_dodge())+ facet_wrap(agegroup ~ ., ncol = 5) +
+  theme_minimal()+ scale_fill_manual(values = c("#00AFBB", "#FC4E07")) + 
+  ylab("Count")+ ggtitle("Income Distribution in 2020 per age group")
+
+
+```
+
+Based on the data presented in Fig 1, it is evident that the primary income demographic falls within the age range of 25 to 64. Individuals aged 15 to 24 are predominantly students, hence their income is typically below 30k. Conversely, those over the age of 65 are either retired or hold senior positions within a company, resulting in two distinct peaks in their income distribution: one between 20k to 25k, and another surpassing 150k.
+
+
+
+In this project, our primary focus is on the age bracket spanning from 25 to 64, as this demographic primarily consists of individuals who are actively engaged in the workforce. Consequently, analyzing income payments within this age range provides a more equitable and representative assessment of financial trends. Within this specific age group, we observe a higher percentage of women compared to men in the lower and middle income brackets, typically ranging from 0 to 70k. Conversely, in the higher income brackets, we note a lower percentage of women compared to men. This trend is particularly pronounced in income groups under 5k, where the number of women significantly surpasses that of men, and in income brackets between 100k to 150k, where the count of women is notably lower than that of men.
+
+
+
+
+
+
+```{r, echo = F , results='hide',  message=FALSE, , warning=FALSE}
+
+mapcan(boundaries = province,
+       type = standard) %>%
+  head()
+
+
+pr_map <- mapcan(boundaries = province,
+                 type = standard) %>%
+  ggplot(aes(x = long, y = lat, group = group))
+
+pr_map <- pr_map +
+  geom_polygon() +
+  coord_fixed()
+
+pop_2017 <- mapcan::province_pop_annual %>%
+  filter(year == 2017)
+pr_geographic <- mapcan(boundaries = province,
+                        type = standard)
+
+
+pr_geographic <- inner_join(pr_geographic, 
+                            pop_2017, 
+                            by = c("pr_english" = "province"))
+
+
+  
+
+
+
+```
+
+
+To effectively illustrate the percentage of females within specific income brackets across various Canadian provinces, we will utilize the mapcan package to import spatial data. Subsequently, we will merge this data with our existing income survey data for comprehensive analysis.
+
+Figure 2 depicts the distribution of the Canadian population by province as of 2020. Notably, Ontario and Quebec emerge as the provinces with the highest population counts.
+
+```{r,  fig.width=12,fig.height=6, fig.cap="Fig 2: Canadian Population by Province in 2020"}
+
+pr_geographic %>%
+  ggplot(aes(x = long, y = lat, group = group, fill = population)) +
+  geom_polygon() +
+  coord_fixed() +
+  theme_mapcan() +
+  scale_fill_viridis_c(name = "Population") +
+  ggtitle("Canadian Population by Province in 2020")
+
+names(pr_geographic )[names(pr_geographic ) == 'pr_english'] <- 'province'
+
+```
+
+
+```{r, echo = F , results='hide',  message=FALSE, , warning=FALSE}
+pr_count=merge(x = pr_geographic , y = mydata, by =  "province", all = TRUE)
+pr_count=na.omit(pr_count)
+as.factor(pr_count$incomegroups)
+
+as.factor(pr_count$agegroup)
+
+  
+```
+
+
+
+
+
+```{r, echo = F , results='hide',  message=FALSE, , warning=FALSE}
+pr_countwork=pr_count[pr_count$agegroup=="25 to 64 years",]
+
+  pr_countwork1= pr_countwork[ pr_countwork$ incomegroups=="Under $5,000 (including loss)",]
+  
+  pr_countwork1$femalepercent=NA
+  
+  pr_countwork1[pr_countwork1$pr_alpha=="AB", 16] # 53595/(29695+ 53595 ),
+  fAB= 0.6434746
+  
+  pr_countwork1[pr_countwork1$pr_alpha=="BC", 16] # 74410 /( 51340+ 74410), 
+  fBC=0.5917296
+  
+  pr_countwork1[pr_countwork1$pr_alpha=="MB", 16] # 14335/(13545+ 14335), 
+  fMB=0.5141679
+  
+  pr_countwork1[pr_countwork1$pr_alpha=="NB", 16] # 7665/( 4695+ 7665 ),
+  fNB= 0.6201456
+  
+  
+  pr_countwork1[pr_countwork1$pr_alpha=="NL", 16] # 5375/( 3025+ 5375), 
+  fNL= 0.639881
+  
+  pr_countwork1[pr_countwork1$pr_alpha=="NT", 16] # 380/(420+ 380), 
+  fNT=  0.475
+  
+  pr_countwork1[pr_countwork1$pr_alpha=="NS", 16] # 11305/( 8560+ 11305 ),
+  fNS=0.5690914
+  
+  pr_countwork1[pr_countwork1$pr_alpha=="NU", 16] # 220/(485+ 220 ), 
+  fNU=0.3120567
+  
+  
+  pr_countwork1[pr_countwork1$pr_alpha=="ON", 16] #  179335 /(113630+ 179335 ), 
+  fON= 0.612138
+  
+  pr_countwork1[pr_countwork1$pr_alpha=="PE", 16] # 985/( 1160+  985 ), 
+  fPE=  0.4592075
+  
+  pr_countwork1[pr_countwork1$pr_alpha=="QC", 16] # 41215/( 68745+ 41215), 
+  fQC= 0.3748181
+  
+  pr_countwork1[pr_countwork1$pr_alpha=="SK", 16] #   10845/(10070+ 10845), 
+  fSK= 0.5185274
+  
+  pr_countwork1[pr_countwork1$pr_alpha=="YT", 16] # 280/(300+ 280), 
+  fYT= 0.4827586
+  
+  f1=c(rep(fAB,  length(pr_countwork1[pr_countwork1$pr_alpha=="AB",1])),rep(fBC,  length(pr_countwork1[pr_countwork1$pr_alpha=="BC",1])),
+       rep(fMB,  length(pr_countwork1[pr_countwork1$pr_alpha=="MB",1])),rep(fNB,  length(pr_countwork1[pr_countwork1$pr_alpha=="NB",1])),
+       rep(fNL,  length(pr_countwork1[pr_countwork1$pr_alpha=="NL",1])),rep(fNT,  length(pr_countwork1[pr_countwork1$pr_alpha=="NT",1])),
+       rep(fNS,  length(pr_countwork1[pr_countwork1$pr_alpha=="NS",1])),rep(fNU,  length(pr_countwork1[pr_countwork1$pr_alpha=="NU",1])),
+       rep(fON,  length(pr_countwork1[pr_countwork1$pr_alpha=="ON",1])),rep(fPE,  length(pr_countwork1[pr_countwork1$pr_alpha=="PE",1])),
+       rep(fQC,  length(pr_countwork1[pr_countwork1$pr_alpha=="QC",1])),rep(fSK,  length(pr_countwork1[pr_countwork1$pr_alpha=="SK",1])),
+       rep(fYT,  length(pr_countwork1[pr_countwork1$pr_alpha=="YT",1])))
+  
+  pr_countwork1$femalepercent=f1
+  
+
+
+
+
+```
+
+Figures 3 through 7 display spatial distribution of the percentages of women among different provinces within specific income brackets: under \$5,000, \$30,000 to \$34,999, \$60,000 to \$69,999, \$90,000 to \$99,999, \$100,000 to \$149,999, and over \$150,000, respectively, where the $woman percentage = woman count in each income group and province /total count in each income group and province$
+
+
+
+```{r, fig.width=12,fig.height=6, fig.cap="Fig 3: Womam percentage with income Under $5,000 (including loss) by Province"}
+ p1= pr_countwork1 %>%
+    ggplot(aes(x = long, y = lat, group = group, fill = femalepercent, 
+    text = paste0("Province: ",province))) +
+    geom_polygon() +
+    coord_fixed() +
+    theme_mapcan() +
+    scale_fill_viridis_c(name = "Womam percentage", option = "C") +
+    ggtitle("Womam percentage with income Under $5,000 (including loss) by Province")
+ggplotly(p1)
+```
+
+
+```{r,echo = F , results='hide',  message=FALSE, , warning=FALSE}
+
+
+
+
+pr_countwork4= pr_countwork[ pr_countwork$ incomegroups=="$30,000 to $34,999",]
+  
+  
+  unique( pr_countwork4$pr_alpha)
+  length(pr_countwork4[pr_countwork4$pr_alpha=="BC",1])
+  
+  length(pr_countwork4[pr_countwork4$pr_alpha=="AB",1])
+  
+  pr_countwork4$femalepercent=NA
+  
+  pr_countwork4[pr_countwork4$pr_alpha=="AB", 16] # 78290/(50130+ 78290),
+  fAB=0.6096402
+  
+  pr_countwork4[pr_countwork4$pr_alpha=="BC", 16] # 98695/( 66415+ 98695), 
+  fBC=0.597753
+  
+  pr_countwork4[pr_countwork4$pr_alpha=="MB", 16] # 25910/(18220 +25910), 
+  fMB=0.5871289
+  
+  pr_countwork4[pr_countwork4$pr_alpha=="NB", 16] # 16980/( 13050+ 16980),
+  fNB=0.5654346
+  
+  
+  pr_countwork4[pr_countwork4$pr_alpha=="NL", 16] # 12240/(  8640+ 12240), 
+  fNL=0.5862069
+  
+  pr_countwork4[pr_countwork4$pr_alpha=="NT", 16] # 525/(440+ 525), 
+  fNT=0.5440415
+  
+  pr_countwork4[pr_countwork4$pr_alpha=="NS", 16] # 20970/( 15405 +20970),
+  fNS=0.5764948
+  
+  pr_countwork4[pr_countwork4$pr_alpha=="NU", 16] # 445/(385 +445), 
+  fNU=0.5361446
+  
+  
+  pr_countwork4[pr_countwork4$pr_alpha=="ON", 16] #  263125/(188930+ 263125), 
+  fON=0.5820641
+  
+  pr_countwork4[pr_countwork4$pr_alpha=="PE", 16] # 3270/(2720 +3270), 
+  fPE= 0.5459098
+  
+  pr_countwork4[pr_countwork4$pr_alpha=="QC", 16] # 122875/( 159085+ 122875), 
+  fQC=0.4357888
+  
+  pr_countwork4[pr_countwork4$pr_alpha=="SK", 16] #   19565/(13590+ 19565), 
+  fSK= 0.5901071
+  
+  pr_countwork4[pr_countwork4$pr_alpha=="YT", 16] # 570/(450+ 570), 
+  fYT= 0.5588235
+  
+  f4=c(rep(fAB,  length(pr_countwork4[pr_countwork4$pr_alpha=="AB",1])),rep(fBC,  length(pr_countwork4[pr_countwork4$pr_alpha=="BC",1])),
+       rep(fMB,  length(pr_countwork4[pr_countwork4$pr_alpha=="MB",1])),rep(fNB,  length(pr_countwork4[pr_countwork4$pr_alpha=="NB",1])),
+       rep(fNL,  length(pr_countwork4[pr_countwork4$pr_alpha=="NL",1])),rep(fNT,  length(pr_countwork4[pr_countwork4$pr_alpha=="NT",1])),
+       rep(fNS,  length(pr_countwork4[pr_countwork4$pr_alpha=="NS",1])),rep(fNU,  length(pr_countwork4[pr_countwork4$pr_alpha=="NU",1])),
+       rep(fON,  length(pr_countwork4[pr_countwork4$pr_alpha=="ON",1])),rep(fPE,  length(pr_countwork4[pr_countwork4$pr_alpha=="PE",1])),
+       rep(fQC,  length(pr_countwork4[pr_countwork4$pr_alpha=="QC",1])),rep(fSK,  length(pr_countwork4[pr_countwork4$pr_alpha=="SK",1])),
+       rep(fYT,  length(pr_countwork4[pr_countwork4$pr_alpha=="YT",1])))
+  
+  pr_countwork4$femalepercent=f4
+  
+
+  
+  
+
+```
+
+```{r, echo = F ,  message=FALSE, , warning=FALSE, fig.width=12,fig.height=6, fig.cap="Fig 4: Womam percentage with income $30,000 to $34,999 by Province"}
+  p2=pr_countwork4 %>%
+    ggplot(aes(x = long, y = lat, group = group, fill = femalepercent, 
+    text = paste0("Province: ",province))) +
+    geom_polygon() +
+    coord_fixed() +
+    theme_mapcan() +
+    scale_fill_viridis_c(name = "Womam percentage", option = "C") +
+    ggtitle("Womam percentage with income $30,000 to $34,999 by Province")
+ggplotly(p2)
+```
+
+
+
+```{r,echo = F , results='hide',  message=FALSE, , warning=FALSE}
+
+pr_countwork6= pr_countwork[ pr_countwork$ incomegroups=="$60,000 to $69,999",]
+
+  pr_countwork6$femalepercent=NA
+  
+  pr_countwork6[pr_countwork6$pr_alpha=="AB", 16] # 92955/(95240+ 92955),
+  fAB= 0.4939292
+  
+  pr_countwork6[pr_countwork6$pr_alpha=="BC", 16] # 107855 /( 111670 +107855 ), 
+  fBC=0.4913108
+  
+  pr_countwork6[pr_countwork6$pr_alpha=="MB", 16] # 26340/(31400+ 26340), 
+  fMB=0.4561829
+  
+  pr_countwork6[pr_countwork6$pr_alpha=="NB", 16] # 18560/( 14230 +18560 ),
+  fNB= 0.5660262
+  
+  
+  pr_countwork6[pr_countwork6$pr_alpha=="NL", 16] # 10650/( 9450+ 10650), 
+  fNL= 0.5298507
+  
+  pr_countwork6[pr_countwork6$pr_alpha=="NT", 16] # 745/(670+ 745), 
+  fNT= 0.5265018
+  
+  pr_countwork6[pr_countwork6$pr_alpha=="NS", 16] # 18465/( 22075+ 18465),
+  fNS=0.4554761
+  
+  pr_countwork6[pr_countwork6$pr_alpha=="NU", 16] # 405/(355+ 405 ), 
+  fNU=0.5328947
+  
+  
+  pr_countwork6[pr_countwork6$pr_alpha=="ON", 16] #  309125/(300340+ 309125 ), 
+  fON= 0.5072071
+  
+  pr_countwork6[pr_countwork6$pr_alpha=="PE", 16] # 3255/(3535+ 3255), 
+  fPE= 0.4793814
+  
+  pr_countwork6[pr_countwork6$pr_alpha=="QC", 16] # 215655/( 215655+ 198175), 
+  fQC=0.5211198
+  
+  pr_countwork6[pr_countwork6$pr_alpha=="SK", 16] #   23925/(24875+ 23925), 
+  fSK= 0.4902664
+  
+  pr_countwork6[pr_countwork6$pr_alpha=="YT", 16] # 935/(1125+  935), 
+  fYT= 0.4538835
+  
+  f6=c(rep(fAB,  length(pr_countwork6[pr_countwork6$pr_alpha=="AB",1])),rep(fBC,  length(pr_countwork6[pr_countwork6$pr_alpha=="BC",1])),
+       rep(fMB,  length(pr_countwork6[pr_countwork6$pr_alpha=="MB",1])),rep(fNB,  length(pr_countwork6[pr_countwork6$pr_alpha=="NB",1])),
+       rep(fNL,  length(pr_countwork6[pr_countwork6$pr_alpha=="NL",1])),rep(fNT,  length(pr_countwork6[pr_countwork6$pr_alpha=="NT",1])),
+       rep(fNS,  length(pr_countwork6[pr_countwork6$pr_alpha=="NS",1])),rep(fNU,  length(pr_countwork6[pr_countwork6$pr_alpha=="NU",1])),
+       rep(fON,  length(pr_countwork6[pr_countwork6$pr_alpha=="ON",1])),rep(fPE,  length(pr_countwork6[pr_countwork6$pr_alpha=="PE",1])),
+       rep(fQC,  length(pr_countwork6[pr_countwork6$pr_alpha=="QC",1])),rep(fSK,  length(pr_countwork6[pr_countwork6$pr_alpha=="SK",1])),
+       rep(fYT,  length(pr_countwork6[pr_countwork6$pr_alpha=="YT",1])))
+  
+  pr_countwork6$femalepercent=f6
+  
+
+```
+
+
+```{r, echo = F ,  message=FALSE, , warning=FALSE, fig.width=12,fig.height=6, fig.cap="Fig 5: Womam percentage with income $60,000 to $69,999 by Province"}
+  
+  p3=pr_countwork6 %>%
+    ggplot(aes(x = long, y = lat, group = group, fill = femalepercent, 
+    text = paste0("Province: ",province))) +
+    geom_polygon() +
+    coord_fixed() +
+    theme_mapcan() +
+    scale_fill_viridis_c(name = "Womam percentage", option = "C") +
+    ggtitle("Womam percentage with income $60,000 to $69,999 by Province")
+ggplotly(p3)
+```
+
+
+
+```{r,echo = F , results='hide',  message=FALSE, , warning=FALSE}
+
+pr_countwork16= pr_countwork[ pr_countwork$ incomegroups=="$90,000 to $99,999",]
+  
+
+  pr_countwork16$femalepercent=NA
+  
+  pr_countwork16[pr_countwork16$pr_alpha=="AB", 16] # 64540/(45425 + 64540),
+  fAB2=0.586914
+  
+  pr_countwork16[pr_countwork16$pr_alpha=="BC", 16] # 47725/( 68860+ 47725), 
+  fBC2=0.409358
+  
+  pr_countwork16[pr_countwork16$pr_alpha=="MB", 16] #  12690/(15665 + 12690), 
+  fMB2= 0.4475401
+  
+  pr_countwork16[pr_countwork16$pr_alpha=="NB", 16] # 7525/( 6015+ 7525),
+  fNB2=0.5557607
+  
+  
+  pr_countwork16[pr_countwork16$pr_alpha=="NL", 16] # 5645/( 5375 + 5645), 
+  fNL2= 0.5122505
+  
+  pr_countwork16[pr_countwork16$pr_alpha=="NT", 16] # 750/( 615 +750 ), 
+  fNT2=0.5494505
+  
+  pr_countwork16[pr_countwork16$pr_alpha=="NS", 16] # 9185/( 11015 + 9185),
+  fNS2=0.454703
+  
+  pr_countwork16[pr_countwork16$pr_alpha=="NU", 16] # 440/(320 +440), 
+  fNU2= 0.5789474
+  
+  
+  pr_countwork16[pr_countwork16$pr_alpha=="ON", 16] #  145525/(184325 +145525), 
+  fON2=0.4411854
+  
+  pr_countwork16[pr_countwork16$pr_alpha=="PE", 16] # 1415/( 1225+ 1415), 
+  fPE2= 0.5359848
+  
+  pr_countwork16[pr_countwork16$pr_alpha=="QC", 16] # 79440/( 98575 +79440), 
+  fQC2=0.4462545
+  
+  pr_countwork16[pr_countwork16$pr_alpha=="SK", 16] #   12175/(14925+ 12175), 
+  fSK2=  0.449262
+  
+  pr_countwork16[pr_countwork16$pr_alpha=="YT", 16] # 835/( 875 +835 ), 
+  fYT2= 0.4883041
+  
+  f4=c(rep(fAB2,  length(pr_countwork16[pr_countwork4$pr_alpha=="AB",1])),rep(fBC2,  length(pr_countwork16[pr_countwork4$pr_alpha=="BC",1])),
+       rep(fMB2,  length(pr_countwork16[pr_countwork4$pr_alpha=="MB",1])),rep(fNB2,  length(pr_countwork16[pr_countwork4$pr_alpha=="NB",1])),
+       rep(fNL2,  length(pr_countwork16[pr_countwork4$pr_alpha=="NL",1])),rep(fNT2,  length(pr_countwork16[pr_countwork4$pr_alpha=="NT",1])),
+       rep(fNS2,  length(pr_countwork16[pr_countwork4$pr_alpha=="NS",1])),rep(fNU2,  length(pr_countwork16[pr_countwork4$pr_alpha=="NU",1])),
+       rep(fON2,  length(pr_countwork16[pr_countwork4$pr_alpha=="ON",1])),rep(fPE2,  length(pr_countwork16[pr_countwork4$pr_alpha=="PE",1])),
+       rep(fQC2,  length(pr_countwork16[pr_countwork4$pr_alpha=="QC",1])),rep(fSK2,  length(pr_countwork16[pr_countwork4$pr_alpha=="SK",1])),
+       rep(fYT2,  length(pr_countwork16[pr_countwork4$pr_alpha=="YT",1])))
+  
+  pr_countwork16$femalepercent=f4
+  
+```
+
+```{r, echo = F ,  message=FALSE, , warning=FALSE, fig.width=12,fig.height=6, fig.cap="Fig 6: Womam percentage with income $90,000 to $99,999 by Province"}
+
+  p4=pr_countwork16 %>%
+    ggplot(aes(x = long, y = lat, group = group, fill = femalepercent, 
+    text = paste0("Province: ",province))) +
+    geom_polygon() +
+    coord_fixed() +
+    theme_mapcan() +
+    scale_fill_viridis_c(name = "Womam percentage", option = "C") +
+    ggtitle("Womam percentage with income $90,000 to $99,999 by Province")
+  
+ ggplotly(p4)
+  
+```
+```{r,echo = F , results='hide',  message=FALSE, , warning=FALSE}
+pr_countwork17= pr_countwork[ pr_countwork$incomegroups=="$100,000 to $149,999",]
+  
+  
+  pr_countwork17$femalepercent=NA
+  
+  pr_countwork17[pr_countwork17$pr_alpha=="AB", 16] # 171810/( 91145+ 171810),
+  fAB3= 0.6533818
+  
+  pr_countwork17[pr_countwork17$pr_alpha=="BC", 16] # 89295/(  169035 + 89295), 
+  fBC3=0.3456625
+  
+  pr_countwork17[pr_countwork17$pr_alpha=="MB", 16] #  17685/(33055+ 17685), 
+  fMB3= 0.3485416
+  
+  pr_countwork17[pr_countwork17$pr_alpha=="NB", 16] # 16175/( 7455+ 16175 ),
+  fNB3= 0.6845112
+  
+  
+  pr_countwork17[pr_countwork17$pr_alpha=="NL", 16] # 14485/( 7540 + 14485 ), 
+  fNL3= 0.6576617
+  
+  pr_countwork17[pr_countwork17$pr_alpha=="NT", 16] # 2735/(2895 +2735), 
+  fNT3=0.4857904
+  
+  pr_countwork17[pr_countwork17$pr_alpha=="NS", 16] # 9185/( 11015 + 9185),
+  fNS3=0.454703
+  
+  pr_countwork17[pr_countwork17$pr_alpha=="NU", 16] # 1905/(1545 +1905 ), 
+  fNU3= 0.5521739
+  
+  
+  pr_countwork17[pr_countwork17$pr_alpha=="ON", 16] #  319355/( 471260 +319355), 
+  fON3=0.4039324
+  
+  pr_countwork17[pr_countwork17$pr_alpha=="PE", 16] # 1575/( 2530 + 1575), 
+  fPE3= 0.3836784
+  
+  pr_countwork17[pr_countwork17$pr_alpha=="QC", 16] # 129370/(  220145+ 129370 ), 
+  fQC3=0.3701415
+  
+  pr_countwork17[pr_countwork17$pr_alpha=="SK", 16] #   19270/(36435+ 19270), 
+  fSK3=  0.3459294
+  
+  pr_countwork17[pr_countwork17$pr_alpha=="YT", 16] # 2010/( 1690+ 2010 ), 
+  fYT3= 0.5432432
+  
+  f17=c(rep(fAB3,  length(pr_countwork17[pr_countwork17$pr_alpha=="AB",1])),rep(fBC3,  length(pr_countwork17[pr_countwork17$pr_alpha=="BC",1])),
+       rep(fMB3,  length(pr_countwork17[pr_countwork17$pr_alpha=="MB",1])),rep(fNB2,  length(pr_countwork17[pr_countwork17$pr_alpha=="NB",1])),
+       rep(fNL3,  length(pr_countwork17[pr_countwork17$pr_alpha=="NL",1])),rep(fNT3,  length(pr_countwork17[pr_countwork17$pr_alpha=="NT",1])),
+       rep(fNS3,  length(pr_countwork17[pr_countwork17$pr_alpha=="NS",1])),rep(fNU3,  length(pr_countwork17[pr_countwork17$pr_alpha=="NU",1])),
+       rep(fON3,  length(pr_countwork17[pr_countwork17$pr_alpha=="ON",1])),rep(fPE3,  length(pr_countwork17[pr_countwork17$pr_alpha=="PE",1])),
+       rep(fQC3,  length(pr_countwork17[pr_countwork17$pr_alpha=="QC",1])),rep(fSK3,  length(pr_countwork17[pr_countwork17$pr_alpha=="SK",1])),
+       rep(fYT3,  length(pr_countwork17[pr_countwork17$pr_alpha=="YT",1])))
+  
+  pr_countwork17$femalepercent=f17
+
+```
+
+
+```{r, echo = F ,  message=FALSE, , warning=FALSE, fig.width=12,fig.height=6, fig.cap="Fig 7: Womam percentage with income $100,000 to $149,999 by Province"}
+
+
+  
+ p5= pr_countwork17 %>%
+    ggplot(aes(x = long, y = lat, group = group, fill = femalepercent , 
+    text = paste0("Province: ",province))) +
+    geom_polygon() +
+    coord_fixed() +
+    theme_mapcan() +
+    scale_fill_viridis_c(name = "Womam percentage", option = "C") +
+    ggtitle("Womam percentage with income $100,000 to $149,999 by Province")
+  
+  ggplotly(p5)
+
+  
+ 
+  
+```
+
+
+
+
+
+``` {r,echo = F , results='hide',  message=FALSE, , warning=FALSE}
+
+pr_countwork18= pr_countwork[ pr_countwork$ incomegroups=="$150,000 and over",]
+  
+  pr_countwork18$femalepercent=NA
+  
+  pr_countwork18[pr_countwork18$pr_alpha=="AB", 16] # 120205/(34560+ 120205  ),
+  fAB= 0.7766937
+  
+  pr_countwork18[pr_countwork18$pr_alpha=="BC", 16] # 34470 /( 95750+ 34470), 
+  fBC=0.2647059
+  
+  pr_countwork18[pr_countwork18$pr_alpha=="MB", 16] # 4940/(14445+  4940), 
+  fMB=0.2548362
+  
+  pr_countwork18[pr_countwork18$pr_alpha=="NB", 16] # 6800/( 2340+ 6800 ),
+  fNB= 0.7439825
+  
+  
+  pr_countwork18[pr_countwork18$pr_alpha=="NL", 16] # 8260/(  2300+ 8260), 
+  fNL=  0.782197
+  
+  pr_countwork18[pr_countwork18$pr_alpha=="NT", 16] # 770/(1370+  770), 
+  fNT=  0.3598131
+  
+  pr_countwork18[pr_countwork18$pr_alpha=="NS", 16] # 9820/( 3765+ 9820 ),
+  fNS= 0.7228561
+  
+  pr_countwork18[pr_countwork18$pr_alpha=="NU", 16] # 530/(685+ 530  ), 
+  fNU= 0.436214
+  
+  
+  pr_countwork18[pr_countwork18$pr_alpha=="ON", 16] #  118500/(274505+ 118500), 
+  fON= 0.3015229
+  
+  pr_countwork18[pr_countwork18$pr_alpha=="PE", 16] #  470 /(  1245+  470  ), 
+  fPE=   0.2740525
+  
+  pr_countwork18[pr_countwork18$pr_alpha=="QC", 16] # 44560/(102525+  44560), 
+  fQC= 0.3029541
+  
+  pr_countwork1[pr_countwork1$pr_alpha=="SK", 16] #   10845/(10070+ 10845), 
+  fSK= 0.5185274
+  
+  pr_countwork18[pr_countwork18$pr_alpha=="YT", 16] # 730/(380+ 730), 
+  fYT= 0.6576577
+  
+  f18=c(rep(fAB,  length(pr_countwork18[pr_countwork18$pr_alpha=="AB",1])),rep(fBC,  length(pr_countwork18[pr_countwork18$pr_alpha=="BC",1])),
+       rep(fMB,  length(pr_countwork18[pr_countwork18$pr_alpha=="MB",1])),rep(fNB,  length(pr_countwork18[pr_countwork18$pr_alpha=="NB",1])),
+       rep(fNL,  length(pr_countwork18[pr_countwork18$pr_alpha=="NL",1])),rep(fNT,  length(pr_countwork18[pr_countwork18$pr_alpha=="NT",1])),
+       rep(fNS,  length(pr_countwork18[pr_countwork18$pr_alpha=="NS",1])),rep(fNU,  length(pr_countwork18[pr_countwork18$pr_alpha=="NU",1])),
+       rep(fON,  length(pr_countwork18[pr_countwork18$pr_alpha=="ON",1])),rep(fPE,  length(pr_countwork18[pr_countwork18$pr_alpha=="PE",1])),
+       rep(fQC,  length(pr_countwork18[pr_countwork18$pr_alpha=="QC",1])),rep(fSK,  length(pr_countwork18[pr_countwork18$pr_alpha=="SK",1])),
+       rep(fYT,  length(pr_countwork18[pr_countwork18$pr_alpha=="YT",1])))
+  
+  pr_countwork18$femalepercent=f18
+  
+
+```
+
+
+``` {r, echo = F ,  message=FALSE, , warning=FALSE, fig.width=12,fig.height=6, fig.cap="Fig 8: Womam percentage with income $150,000 and over by Province"}
+
+
+  
+
+p6= pr_countwork18 %>%
+    ggplot(aes(x = long, y = lat, group = group, fill = femalepercent,
+    text = paste0("Province: ",province))) +
+    geom_polygon() +
+    coord_fixed() +
+    theme_mapcan() +
+    scale_fill_viridis_c(name = "Womam percentage", option = "C") +
+    ggtitle("Womam percentage with income $150,000 and over by Province")
+  
+  
+  
+  ggplotly(p6)
+  
+ 
+  
+```
+
+
+
+Based on the data presented in Figures 3 and 4, it is evident that Alberta exhibits the highest percentage of women within the low-income bracket ranging from 0 to 30k, while Quebec shows the lowest percentage in the same income range.
+
+In the middle-income group (60k to 100k), from Figures 5 and 6, we observe that the ranges of woman percentage are the narrowest. Specifically, New Brunswick boasts the highest woman percentage within the income bracket of 60k to 70k, whereas Alberta showcases the highest woman percentage in the income bracket of 90k to 100k. Conversely, Manitoba exhibits the lowest woman percentage in the income group of 60k to 70k, and British Columbia displays the lowest woman percentage in the income group of 90k to 100k.
+
+
+In the high-income groups exceeding 100k, as depicted in Figures 7 and 8, we note that the ranges of woman percentage are the widest, spanning from 0.3 to 0.7. Alberta and Newfoundland emerge as the provinces with the highest woman percentage in the income bracket exceeding 100k. Conversely, Manitoba and British Columbia demonstrate the lowest woman percentage in this income range.
+
+
+As an international immigrant, I've dedicated the past six years to studying and working in the Atlantic region including New Brunswick (NB), Newfoundland  and Labrador (NL), Nova Scotia (NS) and Prince Edward Island (PEI). Given this experience, I'm keen to explore how the percentage of women varies across different income levels in the Atlantic Provinces. To shed light on this, I've plotted Figure 9.
+
+In Figure 9, the income categories are represented as follows: Income Group 1 denotes income under \$5,000, Income Group 4 represents income ranging from \$30,000 to \$34,999, Income Group 6 indicates income between \$60,000 to \$69,999, Income Group 16 signifies income from \$90,000 to \$99,999, Income Group 17 represents income within the range of \$100,000 to \$149,999, and Income Group 18 denotes income exceeding \$150,000.
+
+```{r, echo = F ,  message=FALSE, , warning=FALSE, fig.width=12,fig.height=10, fig.cap="Fig 9: Woman percentages with different income levels across the Atlantic Provinces."}
+
+  pr_countwork1$incomegroups=1
+  pr_countwork4$incomegroups=4
+    pr_countwork6$incomegroups=6
+ pr_countwork16$incomegroups=16
+  pr_countwork17$incomegroups=17
+   pr_countwork18$incomegroups=18
+   
+total <- rbind( pr_countwork1, pr_countwork4)
+total <- rbind( total, pr_countwork6)
+total <- rbind( total, pr_countwork16)
+total <- rbind( total, pr_countwork17)
+total <- rbind( total, pr_countwork18)
+total$incomegroups=factor(total$incomegroups, levels = c(1,4,6,16,17,18))
+pr_countworkAT=total[total$province  %in% c("New Brunswick" ,"Newfoundland and Labrador", "Nova Scotia" ,"Prince Edward Island"),]
+p7=pr_countworkAT %>%
+    ggplot(aes(x = long, y = lat, group = group, fill = femalepercent , 
+    text = paste0("Province: ",province))) +
+    geom_polygon() +
+    coord_fixed() +
+    theme_mapcan() + facet_wrap(incomegroups ~ ., ncol = 3)+
+    scale_fill_viridis_c(name = "Womam percentage", option = "C") +
+    ggtitle("Woman percentages with different income levels across the Atlantic Provinces")
+  
+ggplotly(p7)
+
+```
+
+
+
+Among these four provinces, PEI exhibits the lowest women percentage in Income Groups 17 and 18, while NL boasts the highest women percentage in these income categories. NL also holds the highest women percentage in Income Group 1.
+
+In Income Group 4, all four provinces showcase a similar women percentage, hovering around 0.55. However, there's a notable discrepancy in Income Group 18, where PEI registers approximately 0.3, contrasting with the other provinces where the percentages exceed 0.7.
+
+Income Groups 6 and 16 demonstrate a similar spatial pattern and range for women percentage, fluctuating between 0.4 to 0.5. NS emerges with the lowest percentage in these income brackets.
+
+
+In summary, the percentage range in the first two Income Groups (ranging from 0 to 35k) falls between 0.5 to 0.6, indicating that women have a higher chance of earning low income compared to men, on average. Notably,  PEI  demonstrates the lowest women percentage in these low-income groups, while  NL  boasts the highest.
+
+In the subsequent two Income Groups (ranging from 60k to 100k), the percentage range narrows to 0.4 to 0.5, suggesting that women have a lower chance of attaining mid-level income compared to men, on average.  NS  records the lowest women percentage in these mid-income groups, whereas  NB  exhibits the highest.
+
+In the last two Income Groups (exceeding 100k), the percentage range widens from 0.3 to 0.8. PEI displays the lowest women percentage in these high-income groups, where the percentage of 0.3 indicates a lower likelihood for women to achieve high income compared to men, on average. Conversely, NL boasts the highest women percentage in these high-income groups, with a percentage of 0.8 signifying a greater likelihood for women to attain high income compared to men, on average. Note that, except PEI, all the other provinces' women percentage is greater than 0.6.
+
+## Reference
+
+
+
+
+
+
+
+
+
